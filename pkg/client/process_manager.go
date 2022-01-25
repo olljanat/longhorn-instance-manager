@@ -7,6 +7,7 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/keepalive"
 
 	"github.com/longhorn/longhorn-instance-manager/pkg/api"
 	"github.com/longhorn/longhorn-instance-manager/pkg/meta"
@@ -151,7 +152,10 @@ func (cli *ProcessManagerClient) ProcessLog(name string) (*api.LogStream, error)
 
 func (cli *ProcessManagerClient) ProcessWatch() (*api.ProcessStream, error) {
 	var err error
-	conn, err := grpc.Dial(cli.Address, grpc.WithInsecure())
+	conn, err := grpc.Dial(cli.Address, grpc.WithInsecure(),
+		grpc.WithKeepaliveParams(keepalive.ClientParameters{
+			Time: types.KeepalivePingInterval,
+		}))
 	if err != nil {
 		return nil, fmt.Errorf("cannot connect process manager service to %v: %v", cli.Address, err)
 	}
