@@ -101,13 +101,17 @@ func start(c *cli.Context) error {
 	healthpb.RegisterHealthServer(rpcService, hc)
 	reflection.Register(rpcService)
 
+	serveRPC := true
 	go func() {
-		if err := rpcService.Serve(listenAt); err != nil {
-			logrus.Errorf("Stopping due to %v:", err)
-		}
-		// graceful shutdown before exit
-		cleanup(pm)
-		close(shutdownCh)
+		go func() {
+			if serveRPC == true {
+				logrus.Infof("rpcService.Serve starting")
+				if err := rpcService.Serve(listenAt); err != nil {
+					logrus.Errorf("Stopping due to %v:", err)
+				}
+				logrus.Infof("rpcService.Serve ended")
+			}
+		}()
 	}()
 	logrus.Infof("Instance Manager listening to %v", listen)
 
@@ -116,6 +120,10 @@ func start(c *cli.Context) error {
 	go func() {
 		sig := <-sigs
 		logrus.Infof("Instance Manager received %v to exit", sig)
+		// graceful shutdown before exit
+		cleanup(pm)
+		close(shutdownCh)
+		serveRPC = false
 		rpcService.Stop()
 	}()
 
